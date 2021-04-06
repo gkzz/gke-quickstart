@@ -1,0 +1,60 @@
+include: 
+  - .gitlab-ci.d/.build_dev.yml
+  - .gitlab-ci.d/.page_dev.yml
+  - .gitlab-ci.d/.deploy_dev.yml
+  - project: gkzz/gitlab-ci-common
+    ref: master
+    file: .failure.yml
+
+stages:
+  - build
+#  - page
+  - deploy
+#  - open
+  - failure
+
+#build_dev:
+pages:
+  stage: build
+  extends: .build_dev
+  tags:
+    - always
+  except:
+    changes:
+      - ".gitlab-ci.yml"
+      - ".gitlab-ci.d/*.yml"
+
+#pages:
+##  stage: page
+#  stage: deploy
+#  extends: .page_dev
+#  dependencies:
+#    - build_dev
+#  tags:
+#    - always
+#  except:
+#    changes:
+#      - ".gitlab-ci.yml"
+#      - ".gitlab-ci.d/*.yml"
+
+deploy_dev:
+  stage: deploy
+#  stage: open
+  extends: .deploy_dev
+  tags:
+    - always
+  except:
+    changes:
+      - ".gitlab-ci.yml"
+      - ".gitlab-ci.d/*.yml"
+
+on_failure:
+  stage: failure
+  extends: .failure
+  tags:
+    - always
+  except:
+    changes:
+      - ".gitlab-ci.yml"
+      - ".gitlab-ci.d/*.yml"
+  when: on_failure

@@ -1,0 +1,54 @@
+.deploy_dev:
+  image: google/cloud-sdk:330.0.0-slim
+  services:
+    - docker:19.03.13-dind
+#    - docker:dind
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+  before_script:
+    - PROJECT_ID=$(gcloud config list project --format="value(core.project)")
+    - COMMIT_HASH=$(git rev-parse --short HEAD)
+    - PROJECT_OWNER=gkzz
+    - MANIFEST_ROOT_DIR=gke-quickstart-manifest
+    - CONTAINER_NAME=hello-python
+    - TARGET_BRANCH=demo
+  script:
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - git credential-cache exit
+    - ssh-keyscan -H "$CI_SERVER_HOST" >> ~/.ssh/known_hosts
+    - 'which ssh-agent || ( apk add --update openssh )'
+    - eval "$(ssh-agent -s)"
+    - echo "$SSH_PRIVATE_KEY" | ssh-add - > /dev/null
+    - git config --global user.name "dummy@example.com"
+    - git config --global user.email "dummy@example.com"
+    - >
+      git clone 
+      git@${CI_SERVER_HOST}:${PROJECT_OWNER}/${MANIFEST_ROOT_DIR}.git 
+      && cd ${MANIFEST_ROOT_DIR}/manifests
+    - >
+      git remote set-url 
+      --push origin git@${CI_SERVER_HOST}:${PROJECT_OWNER}/${MANIFEST_ROOT_DIR}.git
+    - git checkout -b argocd/${COMMIT_HASH}
+    - >
+      docker run --rm -v "$PWD:$PWD" -w="$PWD"
+      --entrypoint yq linuxserver/yq
+      -ry '.spec.template.spec.containers[0].image
+      |="gcr.io/'${PROJECT_ID}'/'${CONTAINER_NAME}':'${COMMIT_HASH}'"'
+      deployment.yml.tmpl > deployment.yml
+    - git add deployment.yml
+    - 'git commit -m "RUNNER: ${COMMIT_HASH}" deployment.yml'
+#    - git push -fu origin argocd/${COMMIT_HASH}
+    - >
+      git push
+      -o merge_request.create
+      -o merge_request.title="Runner: ${COMMIT_HASH}"
+      -o merge_request.target=${TARGET_BRANCH}
+      origin argocd/${COMMIT_HASH} 
+
+
+

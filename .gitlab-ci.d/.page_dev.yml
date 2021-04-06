@@ -1,0 +1,17 @@
+.page_dev:
+  image: google/cloud-sdk:330.0.0-slim
+  services:
+    - docker:19.03.13-dind
+#    - docker:dind
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+  script:
+    - mv app/htmlcov/ public
+  artifacts:
+    paths:
+      - public
+    expire_in: 30 days
